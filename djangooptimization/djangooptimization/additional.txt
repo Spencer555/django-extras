@@ -1,0 +1,262 @@
+why websites are slow
+bad code 
+bad indexes
+
+too much traffic (architecture not good enought for the current load)
+bad host
+slow datacenter 
+
+
+if ur site get 100,000 views per day u propably need optimization 
+
+
+optimize ur code after u build the app completely when u are done with the features 
+
+
+printing sql queries for django
+add this logging configuration to settings.py to see ur sql queries 
+
+LOGGING = { 'handlers' : {
+    'console':{'level':'DEBUG', 'class':'logging.StreamHandler',
+               'formatter':'verbose',},
+    
+    
+},
+           
+           'loggers':{'django.db':{
+               'handlers':['console',],'level':'DEBUG'
+           }
+                      }
+}
+
+or use django debug toolbar
+
+
+first problem to solve 
+double evaluation of big query 
+
+class Product(models.Model):
+    def count_similar_products(self):
+        return Product.objects.filter(type=self.type).count()
+    
+    {{product.count_similar_products}}
+    
+    #u would do the same in views templates which is the same query running twice which is not good
+    # so we use cached_property
+    
+    
+    @cached_property 
+    class Product(models.Model):
+        def count_similar_products(self):
+            return Product.objects.filter(type=self.type).count()
+
+
+
+
+            this caches the obj and no longer hits the dbase in the objects life time when the main obj is called
+
+
+
+            #reduce number of db queries
+            
+            class Topping(models.Model):
+                name = models.Charfield(max_length=30)
+                    
+                    
+                    
+            class Pizza(models.Model):
+                name = models.Charfield(max_length=30)
+                toppings = models.ManyToManyField(Topping)
+                
+                
+               def __str__(self):
+                   return"%s (%s)"% (self.name, ", ".join(topping.name for topping in self.toppings.all()))
+               
+            
+
+
+
+        
+   
+                   # the right way to get many to many field or foriegn key use prefetch related
+                   #if we use this method and have 10 pizzas there are 1 query for toppings to for pizzas based on the str model up here 
+                   #we reduce this 11 queries to 1
+                   
+                   Pizza.objects.all()
+                   Pizza.objects.all().select_related("toppings")
+                   
+                   
+                   Pizza.objects.all().prefetch_related("toppings")
+                   
+                   
+                   
+                   caching = is a process of keeping often request objects close so they can be delivered realy fast 
+                   
+                   caching in django 
+                   
+                   u can cache
+                   sites 
+                   views 
+                   template fragments 
+                   sessions 
+                   objects
+                   memcache, redis, database, filesystem, local memory, dummy
+                   
+                   simple way to use caching 2 diff examples
+                   
+                   #memory caching
+                   CACHES = {
+                       'default':{
+                           "BACKEND": 'django.core.cache.backends.memcached.MemcachedCache',
+                           'LOCATION':'127.0.0.1:11211',
+                       }
+                       } 
+                     
+                   #database caching  
+                   CACHES = {
+                       'default':{
+                           'BACKEND':'django.core.backends.db.DatabaseCache',
+                           'LOCATION':'my_cache_table',
+                       }
+                   }
+                   
+                   
+                   view cache 
+                   per-view cache 
+                   url based cache, sets http headers 
+                   (expires, last modified, cache-control(max_age))
+                   
+                   e.g. 
+                   from django.views.decorators.cache import cache_page  
+                   
+                   @cache_page(600)#600 seconds this is to cache the page 
+                   def popular_view(request):
+                       
+                       
+                       
+                   template fragments 
+                   caching the template  this is used in the part of the page constant for all users 
+                   and u only rerender the part that changes e.g username things to cache e.g this.username
+                   {% load cache %}
+                   {% cache 600 homepage_footer %}
+                   <a href="https://in.pycon.org">PyCon</a> 
+                   {% endcache %}
+                   {% load cache %}
+                   {% cache 600 homepage_footer request.user.username %}
+                   <a href="https://in.pycon.org">PyCon</a> 
+                   
+                   {% endcache %}
+                       
+                       
+                   use inside blocks 
+                   multiple cache blocks within a single block 
+                   use lazy objects 
+                   
+                   from django.core.cache import cache  
+                   
+                   from djang.core.cache.utils import make_template_fragment_key 
+                   
+                   #delete template cache e.g u have a team page and u fire some one u need to delete ur cache and cache it again to update it
+                   cache.delete(make_template_fragment_key("homepage_footer", vary_on=[request.user.username]))
+                   
+                   use lazy obj in ur views which dont get evaluated until u hit the templates
+                   
+                   
+                   
+                   sessions 
+                   very good candidate for using a cache(as opposed to file system or database)
+                   
+
+                   
+
+                   SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
+                   SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+                   
+                   
+                   
+                   cache individual obj e.g num of vids on ur youtube website no of product on website 
+                   number of product in a categ etc 
+                   
+                   
+                   from django.core.cache import cache     
+                   
+                   cache.set('Python', 'Django', timeout=600)
+                   cache.get('Python')
+                   cache.delete('Python')
+                   cache.set_many({"Name":'spencer', "mumbai":2000, 'town':'tema'})
+                   cache.get_many(['Name', 'town'])
+                   
+                   delete, delete_many, incr, decr
+                   
+                   
+                   invalidating cache 
+                   
+                   post save signal come handy 
+                    eg u make a new video u want it to come first  
+                    
+                   #  so now ur template fragment cache u made for ur home page is invalid
+                   
+                   def invalidate_flower_cache(sender, instance, **kwargs):
+                       cache_key = "flower_details" + instance.id 
+                       cache.delete(cache_key)
+                       cache_key = make_template_fragment_key("flower_details", [flower.id])
+                       cache.delete(cache_key)
+                       
+                       signals.post_save.connect(invalidate_flower_cache, sender=Flower)
+                       
+                       
+                       
+                       
+                   caching outside django 
+                   
+                   web services e,g, the category menu that get shown on every single page if there are 10 million views everyone is accessing that so cache it
+                   
+                   caching reverse proxies(Varnish) this is placed infront of ur machine and it can cache results u can also use a cron to go to all ur pages once and varnish would have them stored in the dbase 
+                   
+                   CDNs (CloudFlare, Akamai) 
+                   Browsers  ask browers to cache logos css javascript images etc so if the come the first time it take time the next time they dont take time cause the brower is caching it
+                   
+                   
+                   
+                   cache in database 
+                   
+                   object cache vs mysql query cache 
+                   
+                   mysql query cache invalidated as soon as any part of the table is modified 
+                   
+                   query_cache_type   
+                   
+                   sql_cache, sql_no_cache hints for select queries 
+                   
+                   
+                   
+                   
+                   
+                   edge side includes and ajax 
+                   varnish and ackmai both allow u to do edgeside include 
+                   
+                   rest/ajax      
+                   raw Html Template  
+                   data fetched from ajax
+                   rendering with angular react handlebar mustache
+                   
+                   
+                   
+                   dont make ur users wait  
+                   e.g a large app like twitter when a person shares a tweet it is modifies 5000 plus tables so u can confim tweet send and run the modification later thereby not letting the user wait 
+                   
+                   can this be done later   
+                   confirmational emails(retries) tell the user we would send u a confirmation email soon
+                   elasticsearch/solr updates 
+                   when description changes are made u need not update solr on the flight u say solr updates later
+                   
+                   
+                   large report creation  e.g a large report we tell we would send u an email as soon as report is ready
+                   
+                   any requests that are guranteed to timeout     
+                    process async 
+                    use ajax to update user abt status              
+                    
+                    
+                   use celery/gevent
+

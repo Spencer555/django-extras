@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+
+{% block title %}
+
+home 
+
+{% endblock title %}
+
+
+{% block content %}
+<div style="margin:auto; width:70%">
+
+<input id="search_here" class="form_control" placeholder="type here to search..." style="margin: 1em 0; padding:1em; border-radius:1em; width:100%; text-align:center" />
+ <div id ="box" style="text-align:center; width:100%">
+    {% for item in object_list %}
+     <p style='margin:0.7em 0; border:1px dotted black; padding:1em; '> {{item.name|capfirst}} </p><br/>
+    {% endfor %}
+ </div>
+
+</div>
+{% endblock content %}
+
+
+{% block scripts %}
+<script>
+  const data = '{{qs_json}}'
+  const rdata = JSON.parse(data.replace(/&quot;/g, '"'))
+  console.log(rdata)
+
+  const input = document.querySelector('#search_here')
+  
+  let filteredArr = []
+
+  input.addEventListener('keyup', (e) => {
+      box.innerHTML = ""
+      filteredArr = rdata.filter(info=> info['name'].includes(e.target.value))
+
+      if (filteredArr.length > 0){
+          filteredArr.map(info=> {
+              box.innerHTML += `<p style='margin:0.7em 0; border:1px dotted black; padding:1em; '> ${info['name']} </p><br/>`
+          })
+      } else {
+        box.innerHTML += `<b>No Results Found...</b><br>`
+
+      }
+  })
+</script>
+{% endblock scripts %}

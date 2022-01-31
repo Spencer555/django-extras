@@ -1,0 +1,1 @@
+u must add chome driver to ur path before u try the functional tests
